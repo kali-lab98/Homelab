@@ -1,0 +1,174 @@
+# Sanitized version of the real compose file used in LXC 101 ("servarr").
+# Real secrets (WireGuard keys, VPN credentials) are pulled from a .env file
+# that is NOT committed to this repo — see ../.env.example for the variable names.
+
+services:
+  gluetun:
+    image: qmcgaw/gluetun # VPN container tunnel that routes traffic securely
+    container_name: gluetun
+    cap_add:
+      - NET_ADMIN # Grants permission needed to manage networking inside the container
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    ports:
+      - 8080:8080 # qBittorrent Web UI
+      - 6881:6881 # qBittorrent Torrent Port
+      - 9696:9696 # Prowlarr
+
+    volumes:
+      - /docker/gluetun:/gluetun # Persistent configuration location
+      - /etc/timezone:/etc/timezone:ro # Sync host timezone
+      - /etc/localtime:/etc/localtime:ro # Sync host localtime
+    environment: # gluetun github page has configs for all supported VPN providers
+      - VPN_SERVICE_PROVIDER=protonvpn
+      - VPN_TYPE=wireguard
+      - WIREGUARD_PRIVATE_KEY=${WIREGUARD_PRIVATE_KEY}
+      - WIREGUARD_ADDRESSES=${WIREGUARD_ADDRESSES}
+      - WIREGUARD_PUBLIC_KEY=${WIREGUARD_PUBLIC_KEY}
+      - FIREWALL_VPN_INPUT_PORTS=8080,6881,6789,9696,8686
+      - FIREWALL_OUTBOUND_SUBNETS=192.168.1.0/24,10.0.0.0/24
+      - FIREWALL_INBOUND_SUBNETS=192.168.1.0/24,10.0.0.0/24
+      - DNS=10.2.0.1
+      - ROUTING_OUTBOUND_VPN=true
+      - TZ=America/New_York
+    healthcheck:
+      test: ping -c 1 www.google.com || exit 1
+      interval: 60s
+      timeout: 20s
+      retries: 5
+    restart: unless-stopped
+
+  deunhealth:
+    image: qmcgaw/deunhealth # Auto-restarts unhealthy containers based on healthchecks
+    container_name: deunhealth
+    network_mode: "none"
+    environment:
+      - LOG_LEVEL=info
+      - HEALTH_SERVER_ADDRESS=127.0.0.1:9999
+      - TZ=America/New_York
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock # Needed to monitor and restart other containers
+
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest # Torrent client with web UI
+    container_name: qbittorrent
+    restart: unless-stopped
+    labels:
+      - deunhealth.restart.on.unhealthy="true" # Triggers restart if healthcheck fails
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/New_York
+      - WEBUI_PORT=8080 # Matches port exposed via gluetun
+      - TORRENTING_PORT=6881
+    volumes:
+      - /docker/qbittorrent:/config
+      - /docker/qbittorrent/logs:/logs
+      - /data:/data # Shared download location
+    depends_on:
+      gluetun:
+        condition: service_healthy # Wait until gluetun is actually healthy before starting
+    network_mode: service:gluetun # Forces traffic through gluetun VPN container
+    healthcheck:
+      test: ping -c 1 www.google.com || exit 1
+      interval: 60s
+      retries: 3
+      start_period: 20s
+      timeout: 10s
+
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest # Indexer manager for Sonarr/Radarr
+    container_name: prowlarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/New_York
+    volumes:
+      - /docker/prowlarr:/config
+    restart: unless-stopped
+    network_mode: service:gluetun
+    depends_on:
+      gluetun:
+        condition: service_healthy # Wait until gluetun is actually healthy before starting
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest # TV show management via indexers and download clients
+    container_name: sonarr
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/New_York
+    volumes:
+      - /docker/sonarr:/config
+      - /data:/data
+    ports:
+      - 8989:8989 # Sonarr Web UI
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest # Movie management via indexers and download clients
+    container_name: radarr
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/New_York
+    volumes:
+      - /docker/radarr:/config
+      - /data:/data
+    ports:
+      - 7878:7878 # Radarr Web UI
+
+  lidarr:
+    image: lscr.io/linuxserver/lidarr:latest # Music management
+    container_name: lidarr
+    restart: unless-stopped
+    volumes:
+      - /docker/lidarr:/config
+      - /data:/data
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/New_York
+    ports:
+      - 8686:8686
+
+  bazarr:
+    image: lscr.io/linuxserver/bazarr:latest # Subtitle manager for Sonarr/Radarr media
+    container_name: bazarr
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/New_York
+    volumes:
+      - /docker/bazarr:/config
+      - /data:/data
+    ports:
+      - 6767:6767
+
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest # Bypasses Cloudflare and CAPTCHA for indexers
+    container_name: flaresolverr
+    environment:
+      - LOG_LEVEL=info
+      - LOG_HTML=false # Disables HTML logging for performance
+      - CAPTCHA_SOLVER=none # External CAPTCHA solving is disabled
+      - TZ=America/New_York
+    ports:
+      - 8191:8191 # API endpoint used by Prowlarr or Sonarr/Radarr
+    restart: unless-stopped
+    network_mode: bridge # Runs outside of the VPN so it's reachable by indexers
+
+  jellyseerr:
+    image: fallenbagel/jellyseerr:latest # Request management frontend for Jellyfin/Plex
+    container_name: jellyseerr
+    environment:
+      - LOG_LEVEL=debug
+      - NODE_ENV=development
+      - TZ=America/New_York
+    ports:
+      - 5055:5055 # Web UI for users to request movies/shows
+    volumes:
+      - /docker/jellyseerr:/app/config

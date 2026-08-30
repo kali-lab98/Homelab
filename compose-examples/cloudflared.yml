@@ -1,0 +1,11 @@
+# Sanitized version of the real compose file. The tunnel token is pulled
+# from a .env file that is NOT committed to this repo.
+
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    restart: unless-stopped
+    command: tunnel run
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
