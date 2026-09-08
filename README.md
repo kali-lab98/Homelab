@@ -16,61 +16,7 @@ A small self-hosted media + network homelab running on a single repurposed lapto
 
 ## Architecture
 
-```mermaid
-flowchart TB
-    subgraph internet["Internet"]
-        client(("Remote client"))
-    end
-
-    subgraph cf["Cloudflare"]
-        tunnel["Cloudflare Tunnel"]
-    end
-
-    subgraph lan["Home LAN"]
-        router["Router / Gateway<br/>.1"]
-
-        subgraph host["Proxmox VE host — .201"]
-            cockpit["LXC 100: Cockpit — .202<br/>Windows file share"]
-            servarr["LXC 101: servarr — .203<br/>Docker + Portainer"]
-            pihole["LXC 102: Pi-hole — .204<br/>DNS / ad-block"]
-            jellyfin["LXC 103: Jellyfin — .205<br/>GPU-accelerated transcoding"]
-        end
-
-        zfs[("ZFS pool 'vault'<br/>raidz1, 4x USB-attached disks")]
-        winpc["Windows desktop"]
-    end
-
-    client --> tunnel --> jellyfin
-    tunnel --> servarr
-
-    router --- cockpit & servarr & pihole & jellyfin
-
-    cockpit -. "network share" .- winpc
-    servarr --- zfs
-    jellyfin --- zfs
-
-    subgraph dockernet["Inside LXC 101 — Docker network"]
-        direction LR
-        gluetun["gluetun<br/>(VPN tunnel)"]
-        qbit["qBittorrent"]
-        prowlarr["Prowlarr"]
-        sonarr["Sonarr"]
-        radarr["Radarr"]
-        lidarr["Lidarr"]
-        bazarr["Bazarr"]
-        jellyseerr["Jellyseerr"]
-        watchtower["Watchtower"]
-        deunhealth["deunhealth"]
-
-        gluetun -. "shares network namespace" .- qbit
-        gluetun -. "shares network namespace" .- prowlarr
-        sonarr & radarr & lidarr & bazarr --> prowlarr
-        jellyseerr --> sonarr & radarr
-        watchtower -.watches.-> qbit & prowlarr & sonarr & radarr & lidarr & bazarr & jellyseerr
-    end
-
-    servarr === dockernet
-```
+![Homelab architecture diagram](homelab-topology.png)
 
 Only the two services that need to (torrent client + indexer manager) are routed through the VPN container. Everything else in the stack talks directly on the LAN — see [`docs/servarr-stack.md`](docs/servarr-stack.md) for why. Pi-hole (not shown with its own arrows above, to keep the diagram readable) is set as the DNS server for the LAN, so every device — including the other three LXCs — resolves through it.
 
@@ -103,4 +49,4 @@ Only the two services that need to (torrent client + indexer manager) are routed
 
 ## Learning project
 
-This homelab also doubles as the target for a hands-on Java/Spring Boot/Angular learning path — building a real status dashboard for these services instead of throwaway tutorial exercises. Details in a separate learning-path doc, once that project starts.
+This homelab also doubles as the target for a hands-on Java/Spring Boot/Angular learning path building a real status dashboard for these services instead of throwaway tutorial exercises. Details in a separate learning-path doc, once that project starts.

@@ -19,7 +19,7 @@ Everything below runs as Docker containers inside LXC 101 (`servarr`), managed t
 
 ## Why only some services go through the VPN
 
-Only **qBittorrent** and **Prowlarr** are configured with `network_mode: service:gluetun`, meaning they share gluetun's network namespace and all their traffic (including qBittorrent's actual torrent traffic) is forced through the WireGuard tunnel. If gluetun's healthcheck fails, those two containers have no working network at all, by design — this is what stops torrent traffic from ever going out over the raw ISP connection.
+Only **qBittorrent** and **Prowlarr** are configured with `network_mode: service:gluetun`, meaning they share gluetun's network namespace and all their traffic (including qBittorrent's actual torrent traffic) is forced through the WireGuard tunnel. If gluetun's healthcheck fails, those two containers have no working network at all, by design this is what stops torrent traffic from ever going out over the raw ISP connection.
 
 Everything else (Sonarr, Radarr, Lidarr, Bazarr, Jellyseerr, FlareSolverr) runs on the regular Docker bridge network, unprotected by the VPN. That's intentional, not an oversight: these apps only talk to indexers' search APIs, to each other, and to clients on the LAN — none of them handle actual torrent traffic, so there's nothing sensitive to tunnel. Routing everything through the VPN would add unnecessary latency and a single point of failure for services that don't need it.
 
@@ -35,4 +35,4 @@ All the media/download-handling containers mount the same `/data` volume (the 24
 
 ## Secrets
 
-The real Compose file for this stack contains a WireGuard private key (for gluetun) and would contain VPN provider credentials. None of that is included here — see [`lessons-learned.md`](lessons-learned.md) for how secrets are handled in this repo.
+The real Compose file for this stack contains a WireGuard private key (for gluetun) and would contain VPN provider credentials. None of that is included here see [`lessons-learned.md`](lessons-learned.md) for how secrets are handled in this repo.
