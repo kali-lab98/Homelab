@@ -25,5 +25,12 @@ None of these appear anywhere in this repo, and the domain name has been replace
 - **Cloudflare Tunnel over port forwarding** — no inbound ports open on the router at all for remote access.
 - **Watchtower + deunhealth together** — a low-effort way to keep containers current and self-healing without a full monitoring stack.
 
+## Upgrading a live single-node hypervisor
+
+A few things that held up during the Proxmox 8 → 9 major-version upgrade (full writeup: [`proxmox-upgrade-8-to-9.md`](proxmox-upgrade-8-to-9.md)):
+
+- **A backup that's never been test-restored isn't a real safety net.** `apt dist-upgrade` across a major version has no downgrade path — the backups taken beforehand are the only way back, so they need to actually be trustworthy, not just present.
+- **Proxmox's own pre-flight checker (`pve8to9`) catches things you wouldn't otherwise notice** — a stale `/etc/hosts` entry from before this box moved networks, and a leftover `systemd-boot` package that had nothing to do with how the system actually boots. Neither would have caused a problem day-to-day, but both were worth fixing before a major upgrade touched boot-related and networking packages.
+
 ## notes
 

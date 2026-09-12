@@ -8,7 +8,7 @@ A small self-hosted media + network homelab running on a single repurposed lapto
 | Layer | What it is |
 |---|---|
 | Hardware | ASUS ROG Zephyrus 14" gaming laptop (Ryzen 9 6900HS, 16GB RAM, GTX 3070) — repurposed as a server |
-| Hypervisor | Proxmox VE 8.4.19 |
+| Hypervisor | Proxmox VE 9.2 (upgraded from 8.4.19 in September 2026) |
 | Storage | 4-bay USB DAS enclosure, 4 drives in a ZFS `raidz1` pool (`vault`) |
 | Network | Flat LAN |
 | Containers | 4 LXC containers on Proxmox (Cockpit, Servarr/Docker stack, Pi-hole, Jellyfin) |
@@ -23,6 +23,7 @@ Only the two services that need to (torrent client + indexer manager) are routed
 ## Repo map
 
 - [`docs/proxmox-and-storage.md`](docs/proxmox-and-storage.md) — the Proxmox host, LXC containers, and the ZFS storage pool
+- [`docs/proxmox-upgrade-8-to-9.md`](docs/proxmox-upgrade-8-to-9.md) — upgrading the host from Proxmox VE 8 to 9: pre-flight checks, the upgrade itself, and what to expect afterward
 - [`docs/servarr-stack.md`](docs/servarr-stack.md) — the media automation stack (Sonarr/Radarr/Prowlarr/qBittorrent/etc.) and the VPN routing
 - [`docs/watchtower-and-maintenance.md`](docs/watchtower-and-maintenance.md) — how containers stay updated and self-heal
 - [`docs/remote-access.md`](docs/remote-access.md) — the Cloudflare Tunnel setup for reaching services from outside the LAN

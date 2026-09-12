@@ -11,11 +11,12 @@ The whole homelab runs on a single repurposed laptop rather than a purpose-built
 
 Storage is external: a **CENMATE 4-bay USB enclosure** (2.5"/3.5" SATA, USB-A/C 3.0, hot-swappable). RAID is handled entirely in software via ZFS, not by the enclosure.
 
-## Hypervisor: Proxmox VE 8.4.19
+## Hypervisor: Proxmox VE 9.2
 
 Proxmox runs on bare metal and hosts everything else as LXC containers (not full VMs — lighter weight, appropriate for a laptop with 16GB of RAM shared across several services).
 
 - Proxmox web UI: `:8006`
+- Originally installed as 8.4.19, upgraded to 9.2 in September 2026 once 8.x support lapsed — see [`proxmox-upgrade-8-to-9.md`](proxmox-upgrade-8-to-9.md) for the full process, what the pre-flight checker caught, and what to expect right after rebooting.
 
 ## Storage: ZFS pool `vault`
 
