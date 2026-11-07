@@ -17,6 +17,12 @@ The `cloudflared` container runs inside LXC 101 alongside the rest of the Docker
 - **No dependency on a static/dynamic public IP.** Since nothing points directly at the home IP, a dynamic-DNS setup isn't needed either.
 - **Cloudflare sits in front.** Traffic passes through Cloudflare's network before reaching the tunnel, which brings in their DDoS protection and TLS termination for free.
 
+## The one exception
+
+Since November 2026 there is exactly **one** router port forward. A volunteer cache node needs the network's servers to connect to it directly on a raw TCP port with its own TLS certificate, which a tunnel can't carry. That service lives in its own container behind a default-deny Proxmox firewall: it accepts one port from the internet and can't open connections to anything on the LAN. Full design and the checks run before exposing it: [`isolated-public-service-lxc.md`](isolated-public-service-lxc.md).
+
+Everything else above is unchanged: the media apps are still reached only through the tunnel.
+
 ## Secrets
 
 The tunnel is authenticated with a `TUNNEL_TOKEN` — this is effectively a credential that lets Cloudflare route traffic to this specific tunnel, so it's treated the same as any other secret and redacted from this repo. See [`lessons-learned.md`](lessons-learned.md).

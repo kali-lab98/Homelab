@@ -5,9 +5,9 @@
 The whole homelab runs on a single repurposed laptop rather than a purpose-built server:
 
 - **ASUS ROG Zephyrus 14"** (WQXGA 120Hz panel, not that it matters for a headless server)
-- **CPU:** Ryzen 9 6900HS
+- **CPU:** Ryzen 9 5900HS (8 cores / 16 threads, with integrated Radeon graphics)
 - **RAM:** 16GB
-- **GPU:** GTX 3070
+- **GPU:** NVIDIA GeForce RTX 3060 Laptop GPU (passed through to the Jellyfin container for transcoding)
 
 Storage is external: a **CENMATE 4-bay USB enclosure** (2.5"/3.5" SATA, USB-A/C 3.0, hot-swappable). RAID is handled entirely in software via ZFS, not by the enclosure.
 
@@ -40,14 +40,18 @@ config:
 
 ## LXC containers
 
-Four containers run on top of Proxmox:
+Six containers run on top of Proxmox:
 
 | ID | Name | Purpose |
-|---|---|---|---|
+|---|---|---|
 | 100 | Cockpit | Web-based Linux admin UI, used here to serve a network share to the Windows desktop |
 | 101 | servarr | Docker host (via Portainer) running the media automation stack |
 | 102 | pihole | Network-wide DNS and ad-blocking |
 | 103 | jellyfin | Media server, with GPU passthrough for hardware-accelerated transcoding |
+| 104 | monitoring | Docker host for Prometheus + Grafana. See [`monitoring.md`](monitoring.md) |
+| 105 | public cache node | The only internet-facing service. Firewalled off from the LAN. See [`isolated-public-service-lxc.md`](isolated-public-service-lxc.md) |
+
+The two newer containers (104, 105) keep their disks on the NVMe (`local-lvm`) rather than the USB pool: metrics and cache writes stay off the USB disks, they get real snapshots in backups, and they can't start before the pool is mounted at boot.
 
 ### LXC 101 — servarr (Docker host)
 

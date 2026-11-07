@@ -7,18 +7,19 @@ A small self-hosted media + network homelab running on a single repurposed lapto
 
 | Layer | What it is |
 |---|---|
-| Hardware | ASUS ROG Zephyrus 14" gaming laptop (Ryzen 9 6900HS, 16GB RAM, GTX 3070) — repurposed as a server |
+| Hardware | ASUS ROG Zephyrus 14" gaming laptop (Ryzen 9 5900HS, 16GB RAM, NVIDIA RTX 3060 Laptop GPU) — repurposed as a server |
 | Hypervisor | Proxmox VE 9.2 (upgraded from 8.4.19 in September 2026) |
 | Storage | 4-bay USB DAS enclosure, 4 drives in a ZFS `raidz1` pool (`vault`) |
 | Network | Flat LAN |
-| Containers | 4 LXC containers on Proxmox (Cockpit, Servarr/Docker stack, Pi-hole, Jellyfin) |
-| Remote access | Cloudflare Tunnel (no router ports forwarded) |
+| Containers | 6 LXC containers on Proxmox (Cockpit, Servarr/Docker stack, Pi-hole, Jellyfin, Prometheus + Grafana monitoring, an isolated public-facing cache node) |
+| Monitoring | Prometheus + Grafana, node_exporter on the host, 30 days of history |
+| Remote access | Cloudflare Tunnel for the media apps; exactly one router port forwarded, to a firewalled container |
 
 ## Architecture
 
 ![Homelab architecture diagram](homelab-topology.png)
 
-Only the two services that need to (torrent client + indexer manager) are routed through the VPN container. Everything else in the stack talks directly on the LAN — see [`docs/servarr-stack.md`](docs/servarr-stack.md) for why. Pi-hole (not shown with its own arrows above, to keep the diagram readable) is set as the DNS server for the LAN, so every device — including the other three LXCs — resolves through it.
+Only the two services that need to (torrent client + indexer manager) are routed through the VPN container. Everything else in the stack talks directly on the LAN — see [`docs/servarr-stack.md`](docs/servarr-stack.md) for why. Pi-hole (not shown with its own arrows above, to keep the diagram readable) is the DNS server the router hands out over DHCP, with a public resolver as the fallback, so household devices resolve through it. The Proxmox host and the LXCs don't: they use public resolvers directly. That avoids a circular dependency, since the hypervisor shouldn't need one of its own guests to resolve names while booting or when the Pi-hole container is down. The cost is no ad-blocking or query logging for server-side lookups.
 
 ## Repo map
 
@@ -27,6 +28,8 @@ Only the two services that need to (torrent client + indexer manager) are routed
 - [`docs/servarr-stack.md`](docs/servarr-stack.md) — the media automation stack (Sonarr/Radarr/Prowlarr/qBittorrent/etc.) and the VPN routing
 - [`docs/watchtower-and-maintenance.md`](docs/watchtower-and-maintenance.md) — how containers stay updated and self-heal
 - [`docs/remote-access.md`](docs/remote-access.md) — the Cloudflare Tunnel setup for reaching services from outside the LAN
+- [`docs/monitoring.md`](docs/monitoring.md) — Prometheus + Grafana: host metrics, dashboards, and what's planned for alerting
+- [`docs/isolated-public-service-lxc.md`](docs/isolated-public-service-lxc.md) — exposing one service directly to the internet from a firewalled LXC on a flat LAN
 - [`docs/lessons-learned.md`](docs/lessons-learned.md) — what worked, what I'd change, and notes for future me
 - [`compose-examples/`](compose-examples/) — sanitized versions of the real docker-compose files, with secrets pulled out into environment variables (see `.env.example`)
 
@@ -44,8 +47,12 @@ Only the two services that need to (torrent client + indexer manager) are routed
 | Lidarr | LXC 101 (Docker) | `:8686` | Music management |
 | Bazarr | LXC 101 (Docker) | `:6767` | Subtitle management |
 | Jellyseerr | LXC 101 (Docker) | `:5055` | Media request frontend |
-| Pi-hole | LXC 102 | `` | Network-wide DNS + ad-blocking |
+| Pi-hole | LXC 102 | `:53`, `:80/admin` | Network-wide DNS + ad-blocking |
 | Jellyfin | LXC 103 | `:8096` | Media server (GPU transcoding) |
+| node_exporter | bare metal | `:9100` | Host metrics for Prometheus |
+| Prometheus | LXC 104 (Docker) | `:9090` | Metrics collection, 30-day retention |
+| Grafana | LXC 104 (Docker) | `:3000` | Dashboards |
+| Public cache service | LXC 105 | `:443` (forwarded from the internet) | Volunteer node in a community-run distributed image cache, isolated from the LAN |
 
 
 ## Learning project
