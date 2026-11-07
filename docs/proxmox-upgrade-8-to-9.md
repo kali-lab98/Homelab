@@ -40,6 +40,8 @@ A few things worth calling out for anyone doing this on similar hardware:
 
 After reboot, checked in order: Proxmox's own version and running kernel, the ZFS pool's health, the network bridge, and then each service — DNS resolution through Pi-hole, the Docker stack's containers, the media server (including hardware transcode, not falling back to software), and the tunnel routing external traffic in.
 
+> **Correction (November 2026):** GPU transcoding did *not* survive this upgrade. The NVIDIA kernel module had been installed without DKMS, so it was never built for the new 7.0 kernel, and Jellyfin has been falling back to CPU transcoding since the reboot. Lesson for next time: out-of-tree kernel modules (NVIDIA, ZFS from outside the distro, etc.) need DKMS, or an explicit rebuild step in the upgrade plan, and "transcoding works" should be proven with `nvidia-smi` and the transcode log, not by a video playing. Details and the fix plan: [`proxmox-and-storage.md`](proxmox-and-storage.md#lxc-103--jellyfin-gpu-passthrough).
+
 ## If something goes wrong
 
 `apt dist-upgrade` isn't reversible — there's no downgrade path back to the previous major version. The real safety net is the backups taken beforehand: `/etc/pve` and the `vzdump` archives can restore individual containers, or the whole node if it comes to that. This is the reason those backups need to be more than just *taken* — a backup that's never been test-restored isn't a real safety net.
